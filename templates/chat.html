@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Medical Chatbot</title>
+
+    <!-- Our CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <div class="app">
+
+        <!-- LEFT SIDEBAR -->
+        <aside class="sidebar">
+
+            <div class="logo">
+                🩺
+                <span>MediBot</span>
+            </div>
+
+            <button class="new-chat" onclick="newChat()">
+                + New Chat
+            </button>
+
+            <div class="sidebar-section">
+                <p>Medical AI Assistant</p>
+
+                <div class="info-box">
+                    <span>🤖</span>
+                    <div>
+                        <strong>AI Assistant</strong>
+                        <small>Available to help</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-bottom">
+                <p>⚠️ For educational purposes only.</p>
+            </div>
+
+        </aside>
+
+
+        <!-- MAIN CHAT AREA -->
+        <main class="chat-area">
+
+            <!-- HEADER -->
+            <header class="chat-header">
+
+                <div class="bot-profile">
+
+                    <div class="bot-avatar">
+                        🩺
+                    </div>
+
+                    <div>
+                        <h2>Medical Assistant</h2>
+                        <span>
+                            <span class="online-dot"></span>
+                            Online
+                        </span>
+                    </div>
+
+                </div>
+
+            </header>
+
+
+            <!-- MESSAGES -->
+            <section id="messages" class="messages">
+
+                <!-- Welcome message -->
+                <div class="message bot-message">
+
+                    <div class="avatar">
+                        🩺
+                    </div>
+
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            <h3>Hello! 👋</h3>
+
+                            <p>
+                                I'm your medical AI assistant.
+                                How can I help you today?
+                            </p>
+                        </div>
+
+                        <span class="time">Now</span>
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- INPUT AREA -->
+            <div class="input-area">
+
+                <form id="messageForm">
+
+                    <input
+                        type="text"
+                        id="messageInput"
+                        name="msg"
+                        placeholder="Ask a medical question..."
+                        autocomplete="off"
+                        required
+                    >
+
+                    <button type="submit" id="sendButton">
+                        ➤
+                    </button>
+
+                </form>
+
+                <p class="disclaimer">
+                    AI can make mistakes. This chatbot does not replace a qualified medical professional.
+                </p>
+
+            </div>
+
+        </main>
+
+    </div>
+
+
+    <!-- JAVASCRIPT -->
+    <script>
+
+        const form = document.getElementById("messageForm");
+        const input = document.getElementById("messageInput");
+        const messages = document.getElementById("messages");
+        const sendButton = document.getElementById("sendButton");
+
+
+        // Get current time
+        function getTime() {
+
+            const now = new Date();
+
+            return now.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+
+        }
+
+
+        // Add user message
+        function addUserMessage(text) {
+
+            const message = document.createElement("div");
+
+            message.className = "message user-message";
+
+            message.innerHTML = `
+                <div class="message-content">
+
+                    <div class="message-bubble">
+                        ${escapeHTML(text)}
+                    </div>
+
+                    <span class="time">
+                        ${getTime()}
+                    </span>
+
+                </div>
+            `;
+
+            messages.appendChild(message);
+
+            scrollToBottom();
+
+        }
+
+
+        // Add bot message
+        function addBotMessage(text) {
+
+            const message = document.createElement("div");
+
+            message.className = "message bot-message";
+
+            message.innerHTML = `
+                <div class="avatar">
+                    🩺
+                </div>
+
+                <div class="message-content">
+
+                    <div class="message-bubble">
+                        ${escapeHTML(text)}
+                    </div>
+
+                    <span class="time">
+                        ${getTime()}
+                    </span>
+
+                </div>
+            `;
+
+            messages.appendChild(message);
+
+            scrollToBottom();
+
+        }
+
+
+        // Loading message
+        function addLoadingMessage() {
+
+            const message = document.createElement("div");
+
+            message.id = "loadingMessage";
+
+            message.className = "message bot-message";
+
+            message.innerHTML = `
+                <div class="avatar">
+                    🩺
+                </div>
+
+                <div class="message-content">
+
+                    <div class="message-bubble typing">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+
+                </div>
+            `;
+
+            messages.appendChild(message);
+
+            scrollToBottom();
+
+        }
+
+
+        // Remove loading message
+        function removeLoadingMessage() {
+
+            const loading = document.getElementById("loadingMessage");
+
+            if (loading) {
+                loading.remove();
+            }
+
+        }
+
+
+        // Send message to Flask backend
+        form.addEventListener("submit", async function(event) {
+
+            event.preventDefault();
+
+            const message = input.value.trim();
+
+            if (!message) {
+                return;
+            }
+
+
+            // Show user message
+            addUserMessage(message);
+
+            // Clear input
+            input.value = "";
+
+            // Disable button
+            sendButton.disabled = true;
+
+            // Show typing animation
+            addLoadingMessage();
+
+
+            try {
+
+                const formData = new FormData();
+
+                formData.append("msg", message);
+
+
+                const response = await fetch("/get", {
+
+                    method: "POST",
+
+                    body: formData
+
+                });
+
+
+                const data = await response.text();
+
+
+                removeLoadingMessage();
+
+                addBotMessage(data);
+
+
+            } catch (error) {
+
+                removeLoadingMessage();
+
+                addBotMessage(
+                    "Sorry, something went wrong. Please try again."
+                );
+
+                console.error(error);
+
+            }
+
+
+            sendButton.disabled = false;
+
+            input.focus();
+
+        });
+
+
+        // New chat
+        function newChat() {
+
+            messages.innerHTML = `
+                <div class="message bot-message">
+
+                    <div class="avatar">
+                        🩺
+                    </div>
+
+                    <div class="message-content">
+
+                        <div class="message-bubble">
+
+                            <h3>Hello! 👋</h3>
+
+                            <p>
+                                I'm your medical AI assistant.
+                                How can I help you today?
+                            </p>
+
+                        </div>
+
+                        <span class="time">
+                            Now
+                        </span>
+
+                    </div>
+
+                </div>
+            `;
+
+        }
+
+
+        // Scroll chat to bottom
+        function scrollToBottom() {
+
+            messages.scrollTop = messages.scrollHeight;
+
+        }
+
+
+        // Prevent HTML injection
+        function escapeHTML(text) {
+
+            const div = document.createElement("div");
+
+            div.textContent = text;
+
+            return div.innerHTML;
+
+        }
+
+    </script>
+
+</body>
+
+</html>
